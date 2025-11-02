@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groundwater Monitoring System - DWLR Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .status-safe { 
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .status-warning { 
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .status-danger { 
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+        
+        .mini-chart {
+            height: 80px;
+        }
+        
+        .role-tab {
+            transition: all 0.3s ease;
+        }
+        
+        .role-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .alert-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .mobile-menu.open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">DWLR Monitoring System</h1>
+                        <p class="text-sm opacity-90">Real-time Groundwater Intelligence</p>
+                    </div>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" class="md:hidden p-2 rounded-lg bg-white bg-opacity-20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                
+                <!-- Desktop Role Tabs -->
+                <div class="hidden md:flex space-x-2">
+                    <button class="role-tab active px-4 py-2 rounded-lg font-medium" data-role="farmer">
+                        🌾 Farmer
+                    </button>
+                    <button class="role-tab px-4 py-2 rounded-lg font-medium bg-white bg-opacity-20" data-role="policymaker">
+                        🏛️ Policymaker
+                    </button>
+                    <button class="role-tab px-4 py-2 rounded-lg font-medium bg-white bg-opacity-20" data-role="researcher">
+                        🔬 Researcher
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="mobile-menu fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl md:hidden">
+        <div class="p-4 border-b">
+            <h2 class="font-semibold text-gray-800">Select Role</h2>
+        </div>
+        <div class="p-4 space-y-2">
+            <button class="mobile-role-tab w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium" data-role="farmer">
+                🌾 Farmer Dashboard
+            </button>
+            <button class="mobile-role-tab w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50" data-role="policymaker">
+                🏛️ Policymaker Dashboard
+            </button>
+            <button class="mobile-role-tab w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50" data-role="researcher">
+                🔬 Researcher Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Search Bar -->
+        <div class="mb-6">
+            <div class="max-w-md mx-auto">
+                <div class="relative">
+                    <input type="text" id="searchLocation" placeholder="Search by district, village, or farm..." 
+                           class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Farmer Dashboard -->
+        <div id="farmerDashboard" class="dashboard-content">
+            <!-- Quick Status Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="status-safe px-3 py-1 rounded-full text-sm font-medium">Safe Level</div>
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            💧
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-1">12.5m</h3>
+                    <p class="text-gray-600 text-sm">Current Water Level</p>
+                    <div class="mt-4">
+                        <canvas id="waterLevelChart" class="mini-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="status-warning px-3 py-1 rounded-full text-sm font-medium">Moderate Risk</div>
+                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                            🌧️
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-1">15mm</h3>
+                    <p class="text-gray-600 text-sm">Expected Rainfall (7 days)</p>
+                    <div class="mt-4">
+                        <canvas id="rainfallChart" class="mini-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="status-safe px-3 py-1 rounded-full text-sm font-medium">Optimal</div>
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            🌱
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-1">Rice, Wheat</h3>
+                    <p class="text-gray-600 text-sm">Recommended Crops</p>
+                </div>
+            </div>
+
+            <!-- Alerts & Recommendations -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <span class="w-2 h-2 bg-orange-500 rounded-full mr-3 alert-pulse"></span>
+                        Active Alerts
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
+                            <div class="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-bold">!</div>
+                            <div>
+                                <p class="font-medium text-gray-800">Moderate Drought Risk</p>
+                                <p class="text-sm text-gray-600">Consider water-efficient irrigation in next 2 weeks</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                            <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">ℹ</div>
+                            <div>
+                                <p class="font-medium text-gray-800">Irrigation Schedule</p>
+                                <p class="text-sm text-gray-600">Next recommended watering: Tomorrow 6 AM</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Crop Recommendations</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🌾</span>
+                                <div>
+                                    <p class="font-medium text-gray-800">Rice</p>
+                                    <p class="text-sm text-gray-600">High water availability</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 bg-green-500 text-white text-xs rounded-full">Optimal</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🌽</span>
+                                <div>
+                                    <p class="font-medium text-gray-800">Wheat</p>
+                                    <p class="text-sm text-gray-600">Moderate water need</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 bg-green-500 text-white text-xs rounded-full">Good</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥕</span>
+                                <div>
+                                    <p class="font-medium text-gray-800">Vegetables</p>
+                                    <p class="text-sm text-gray-600">Low water requirement</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 bg-yellow-500 text-white text-xs rounded-full">Consider</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Irrigation Tips -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">💡 Smart Irrigation Tips</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <h4 class="font-medium text-gray-800 mb-2">Water-Saving Technique</h4>
+                        <p class="text-sm text-gray-600">Use drip irrigation to reduce water usage by 30-50% while maintaining crop yield.</p>
+                    </div>
+                    <div class="p-4 bg-green-50 rounded-lg">
+                        <h4 class="font-medium text-gray-800 mb-2">Optimal Timing</h4>
+                        <p class="text-sm text-gray-600">Water crops early morning (5-7 AM) or evening (6-8 PM) to minimize evaporation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Policymaker Dashboard -->
+        <div id="policymakerDashboard" class="dashboard-content hidden">
+            <!-- Regional Overview -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Regional Water Stress Index</h3>
+                    <div class="chart-container">
+                        <canvas id="regionalChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Critical Zones</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-800">District A</p>
+                                <p class="text-sm text-gray-600">High stress</p>
+                            </div>
+                            <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-800">District B</p>
+                                <p class="text-sm text-gray-600">Moderate stress</p>
+                            </div>
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-800">District C</p>
+                                <p class="text-sm text-gray-600">Low stress</p>
+                            </div>
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Policy Tools -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        📊
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Generate Report</h4>
+                    <button class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Download PDF
+                    </button>
+                </div>
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border text-center">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        ✅
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Compliance</h4>
+                    <p class="text-2xl font-bold text-green-600">87%</p>
+                </div>
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border text-center">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        ⚠️
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Active Alerts</h4>
+                    <p class="text-2xl font-bold text-yellow-600">12</p>
+                </div>
+                <div class="card-hover bg-white rounded-xl p-6 shadow-sm border text-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        🗺️
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Map View</h4>
+                    <button class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        Open Map
+                    </button>
+                </div>
+            </div>
+
+            <!-- Historical Trends -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Historical Groundwater Trends</h3>
+                <div class="chart-container">
+                    <canvas id="historicalChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Researcher Dashboard -->
+        <div id="researcherDashboard" class="dashboard-content hidden">
+            <!-- Research Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h4 class="text-sm font-medium text-gray-600 mb-2">Data Points</h4>
+                    <p class="text-2xl font-bold text-gray-800">1,247</p>
+                    <p class="text-xs text-green-600 mt-1">↑ 12% this month</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h4 class="text-sm font-medium text-gray-600 mb-2">Recharge Rate</h4>
+                    <p class="text-2xl font-bold text-gray-800">2.3mm/day</p>
+                    <p class="text-xs text-blue-600 mt-1">Average</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h4 class="text-sm font-medium text-gray-600 mb-2">Correlation</h4>
+                    <p class="text-2xl font-bold text-gray-800">0.78</p>
+                    <p class="text-xs text-gray-600 mt-1">Rainfall-Recharge</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h4 class="text-sm font-medium text-gray-600 mb-2">Accuracy</h4>
+                    <p class="text-2xl font-bold text-gray-800">94.2%</p>
+                    <p class="text-xs text-green-600 mt-1">Model Performance</p>
+                </div>
+            </div>
+
+            <!-- Research Tools -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Data Analysis Tools</h3>
+                    <div class="space-y-3">
+                        <button class="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-xl">📈</span>
+                                <div>
+                                    <p class="font-medium">Correlation Analysis</p>
+                                    <p class="text-sm text-gray-600">Rainfall vs Groundwater Recharge</p>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-xl">🔮</span>
+                                <div>
+                                    <p class="font-medium">Predictive Modeling</p>
+                                    <p class="text-sm text-gray-600">Future water level forecasting</p>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-xl">🗺️</span>
+                                <div>
+                                    <p class="font-medium">Spatial Analysis</p>
+                                    <p class="text-sm text-gray-600">Regional comparison tools</p>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Data Export</h3>
+                    <div class="space-y-3">
+                        <button class="w-full p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2">
+                            <span>📊</span>
+                            <span>Export to Excel</span>
+                        </button>
+                        <button class="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2">
+                            <span>📄</span>
+                            <span>Generate CSV</span>
+                        </button>
+                        <button class="w-full p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2">
+                            <span>📋</span>
+                            <span>Research Report PDF</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Charts -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Advanced Analytics</h3>
+                <div class="chart-container">
+                    <canvas id="researchChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Global variables
+        let currentRole = 'farmer';
+        let charts = {};
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            setupEventListeners();
+            startRealTimeUpdates();
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Role switching
+            document.querySelectorAll('.role-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchRole(this.dataset.role);
+                });
+            });
+
+            document.querySelectorAll('.mobile-role-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchRole(this.dataset.role);
+                    closeMobileMenu();
+                });
+            });
+
+            // Mobile menu
+            document.getElementById('mobileMenuBtn').addEventListener('click', toggleMobileMenu);
+            
+            // Search functionality
+            document.getElementById('searchLocation').addEventListener('input', handleSearch);
+
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(e) {
+                const mobileMenu = document.getElementById('mobileMenu');
+                const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+                
+                if (!mobileMenu.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        // Role switching functionality
+        function switchRole(role) {
+            currentRole = role;
+            
+            // Update active tab
+            document.querySelectorAll('.role-tab').forEach(tab => {
+                tab.classList.remove('active');
+                tab.classList.add('bg-white', 'bg-opacity-20');
+                if (tab.dataset.role === role) {
+                    tab.classList.add('active');
+                    tab.classList.remove('bg-white', 'bg-opacity-20');
+                }
+            });
+
+            document.querySelectorAll('.mobile-role-tab').forEach(tab => {
+                tab.classList.remove('bg-blue-50', 'text-blue-700');
+                tab.classList.add('hover:bg-gray-50');
+                if (tab.dataset.role === role) {
+                    tab.classList.add('bg-blue-50', 'text-blue-700');
+                    tab.classList.remove('hover:bg-gray-50');
+                }
+            });
+
+            // Show/hide dashboards
+            document.querySelectorAll('.dashboard-content').forEach(dashboard => {
+                dashboard.classList.add('hidden');
+            });
+            
+            document.getElementById(role + 'Dashboard').classList.remove('hidden');
+            
+            // Update charts for the new role
+            setTimeout(() => {
+                updateChartsForRole(role);
+            }, 100);
+        }
+
+        // Mobile menu functions
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.toggle('open');
+        }
+
+        function closeMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.remove('open');
+        }
+
+        // Search functionality
+        function handleSearch(e) {
+            const query = e.target.value.toLowerCase();
+            // Simulate search results
+            if (query.length > 2) {
+                console.log('Searching for:', query);
+                // In a real application, this would trigger an API call
+                simulateLocationUpdate(query);
+            }
+        }
+
+        // Simulate location-based data update
+        function simulateLocationUpdate(location) {
+            // Update water level based on search
+            const waterLevel = Math.random() * 20 + 5;
+            const status = waterLevel > 15 ? 'Safe Level' : waterLevel > 10 ? 'Moderate Risk' : 'High Risk';
+            
+            // Update the display (simplified)
+            console.log(`Updated data for ${location}: ${waterLevel.toFixed(1)}m - ${status}`);
+        }
+
+        // Initialize all charts
+        function initializeCharts() {
+            // Water Level Chart (Mini)
+            const waterCtx = document.getElementById('waterLevelChart');
+            if (waterCtx) {
+                charts.waterLevel = new Chart(waterCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['6h ago', '4h ago', '2h ago', 'Now'],
+                        datasets: [{
+                            data: [11.2, 11.8, 12.1, 12.5],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        },
+                        elements: { point: { radius: 0 } }
+                    }
+                });
+            }
+
+            // Rainfall Chart (Mini)
+            const rainfallCtx = document.getElementById('rainfallChart');
+            if (rainfallCtx) {
+                charts.rainfall = new Chart(rainfallCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            data: [2, 5, 1, 8, 3, 0, 4],
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        }
+                    }
+                });
+            }
+
+            // Regional Chart (Policymaker)
+            const regionalCtx = document.getElementById('regionalChart');
+            if (regionalCtx) {
+                charts.regional = new Chart(regionalCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Low Stress', 'Moderate Stress', 'High Stress', 'Critical'],
+                        datasets: [{
+                            data: [45, 30, 20, 5],
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#7c2d12'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { usePointStyle: true, padding: 20 }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Historical Chart (Policymaker)
+            const historicalCtx = document.getElementById('historicalChart');
+            if (historicalCtx) {
+                charts.historical = new Chart(historicalCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                        datasets: [{
+                            label: 'Average Water Level (m)',
+                            data: [15.2, 14.8, 13.5, 12.1, 10.8, 9.5, 8.2, 8.8, 10.5, 12.8, 14.2, 15.1],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }, {
+                            label: 'Rainfall (mm)',
+                            data: [45, 38, 25, 15, 8, 2, 1, 5, 18, 35, 42, 48],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Water Level (m)' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Rainfall (mm)' },
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Research Chart (Researcher)
+            const researchCtx = document.getElementById('researchChart');
+            if (researchCtx) {
+                charts.research = new Chart(researchCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Rainfall vs Recharge Rate',
+                            data: [
+                                {x: 10, y: 1.2}, {x: 25, y: 2.8}, {x: 40, y: 4.1},
+                                {x: 15, y: 1.8}, {x: 35, y: 3.5}, {x: 50, y: 5.2},
+                                {x: 20, y: 2.1}, {x: 30, y: 3.1}, {x: 45, y: 4.8}
+                            ],
+                            backgroundColor: '#8b5cf6',
+                            borderColor: '#7c3aed',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Rainfall (mm)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Recharge Rate (mm/day)' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Update charts based on current role
+        function updateChartsForRole(role) {
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.canvas && chart.canvas.offsetParent !== null) {
+                    chart.resize();
+                }
+            });
+        }
+
+        // Simulate real-time data updates
+        function startRealTimeUpdates() {
+            setInterval(() => {
+                updateRealTimeData();
+            }, 5000); // Update every 5 seconds
+        }
+
+        function updateRealTimeData() {
+            // Update water level chart
+            if (charts.waterLevel) {
+                const newValue = 12.5 + (Math.random() - 0.5) * 2;
+                charts.waterLevel.data.datasets[0].data.push(newValue);
+                charts.waterLevel.data.datasets[0].data.shift();
+                charts.waterLevel.update('none');
+            }
+
+            // Update rainfall prediction
+            if (charts.rainfall && Math.random() > 0.7) {
+                const lastIndex = charts.rainfall.data.datasets[0].data.length - 1;
+                charts.rainfall.data.datasets[0].data[lastIndex] = Math.random() * 10;
+                charts.rainfall.update('none');
+            }
+
+            // Update status indicators
+            updateStatusIndicators();
+        }
+
+        function updateStatusIndicators() {
+            // Simulate changing status based on real-time data
+            const statusElements = document.querySelectorAll('.status-safe, .status-warning, .status-danger');
+            statusElements.forEach(element => {
+                // Add subtle pulse animation for active monitoring
+                element.style.animation = 'pulse 0.5s ease-in-out';
+                setTimeout(() => {
+                    element.style.animation = '';
+                }, 500);
+            });
+        }
+
+        // Utility functions for data simulation
+        function generateRandomData(count, min, max) {
+            return Array.from({length: count}, () => Math.random() * (max - min) + min);
+        }
+
+        function formatNumber(num, decimals = 1) {
+            return Number(num).toFixed(decimals);
+        }
+
+        // Export functions for research dashboard
+        function exportData(format) {
+            const data = {
+                timestamp: new Date().toISOString(),
+                waterLevels: charts.waterLevel?.data.datasets[0].data || [],
+                rainfall: charts.rainfall?.data.datasets[0].data || [],
+                format: format
+            };
+            
+            console.log(`Exporting data in ${format} format:`, data);
+            
+            // Simulate file download
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `groundwater_data_${Date.now()}.${format.toLowerCase()}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Add click handlers for export buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.textContent.includes('Export to Excel')) {
+                exportData('XLSX');
+            } else if (e.target.textContent.includes('Generate CSV')) {
+                exportData('CSV');
+            } else if (e.target.textContent.includes('Research Report PDF')) {
+                exportData('PDF');
+            } else if (e.target.textContent.includes('Download PDF')) {
+                exportData('PDF');
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'980246adc3e885c6',t:'MTc1ODA0NTc2MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
